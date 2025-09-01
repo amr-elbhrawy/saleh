@@ -1,52 +1,12 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>جدول مواعيد الطلاب</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <title>جداول الطلاب</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/amiri-font/0.115.0/amiri.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -63,7 +23,7 @@
             overflow-x: hidden;
         }
         
-        .container {
+        .main-header {
             max-width: 1200px;
             margin: 20px auto;
             background: rgba(255, 255, 255, 0.95);
@@ -100,7 +60,6 @@
             text-align: center;
             color: white;
             box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
         }
         
         .motivation h2 {
@@ -111,191 +70,121 @@
         .motivation p {
             font-size: 1.2rem;
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+            margin: 8px 0;
         }
         
-        .download-btn {
-            display: block;
-            margin: 20px auto;
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #ff4081, #f50057);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .download-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-        }
-        
-        .download-btn i {
-            margin-left: 10px;
-        }
-        
-        .schedules-grid {
+        .students-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 30px;
-            padding: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            max-width: 1200px;
+            margin: 30px auto;
         }
         
         .student-card {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow: hidden;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         
         .student-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 18px 40px rgba(0,0,0,0.15);
         }
         
         .student-header {
-            padding: 25px;
-            color: white;
+            padding: 20px;
             text-align: center;
-            font-size: 1.6rem;
-            font-weight: bold;
-            position: relative;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
         }
         
         .student-header i {
             margin-left: 10px;
+            font-size: 1.2rem;
         }
         
-        .sara .student-header {
-            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+        .dalal { background: linear-gradient(135deg, #ff6b9d, #ff8fab); }
+        .sara { background: linear-gradient(135deg, #ff9a6b, #ffa986); }
+        .abdullah { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+        .saleh { background: linear-gradient(135deg, #45b7d1, #96c93d); }
+        
+        .schedule-table { width: 100%; }
+        
+        .table-header {
+            background: #f8fafc;
+            padding: 15px;
+            border-bottom: 2px solid #e2e8f0;
         }
         
-        .dalal .student-header {
-            background: linear-gradient(135deg, #ff80ab, #ff4081);
-        }
-        
-        .saleh .student-header {
-            background: linear-gradient(135deg, #26a69a, #00897b);
-        }
-        
-        .abdullah .student-header {
-            background: linear-gradient(135deg, #4dd0e1, #00acc1);
-        }
-        
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .schedule-table th {
-            background: #f5f7fa;
-            padding: 15px 10px;
-            font-weight: bold;
-            color: #1a3c6d;
-            border-bottom: 2px solid #e0e4e9;
-        }
-        
-        .schedule-table td {
-            padding: 12px 10px;
+        .table-header-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 10px;
             text-align: center;
-            border-bottom: 1px solid #e0e4e9;
-            transition: background-color 0.3s ease;
+            font-weight: 600;
+            color: #4a5568;
         }
         
-        .schedule-table tr:hover td {
-            background-color: #f0f2f5;
+        .schedule-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 10px;
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            align-items: center;
+        }
+        
+        .schedule-row:nth-child(even) { background: #f7fafc; }
+        .schedule-row:nth-child(odd) { background: #fff7ed; }
+        
+        .subjects-cell {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .subject-tag {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+            min-width: 60px;
+        }
+        
+        .arabic { background: linear-gradient(135deg, #ed64a6, #d53f8c); }
+        .english { background: linear-gradient(135deg, #e53e3e, #c53030); }
+        .math { background: linear-gradient(135deg, #3182ce, #2c5282); }
+        .science { background: linear-gradient(135deg, #38a169, #2f855a); }
+        .quran { background: linear-gradient(135deg, #805ad5, #6b46c1); }
+        
+        .time-cell {
+            text-align: center;
+            font-weight: 600;
+            color: #f56500;
+            font-size: 1.1rem;
         }
         
         .day-cell {
-            font-weight: bold;
-            background: #e3f2fd;
-            color: #1565c0;
+            text-align: center;
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1.1rem;
         }
         
-        .time-cell {
-            font-weight: bold;
-            background: #fff8e1;
-            color: #ef6c00;
-            font-size: 0.95rem;
-        }
-        
-        .subject {
-            padding: 8px 15px;
-            border-radius: 25px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            margin: 3px;
-            display: inline-block;
-            color: white;
-            transition: transform 0.2s ease;
-        }
-        
-        .subject:hover {
-            transform: scale(1.1);
-        }
-        
-        .quran { background: #8e24aa; }
-        .science { background: #fb8c00; }
-        .arabic { background: #43a047; }
-        .math { background: #1e88e5; }
-        .english { background: #d81b60; }
-        
-        .legend {
-            background: #f5f7fa;
-            padding: 25px;
-            margin: 20px;
-            border-radius: 15px;
-            border-right: 6px solid #00c4b4;
-        }
-        
-        .legend h3 {
-            margin-bottom: 15px;
-            color: #1a3c6d;
-            font-size: 1.5rem;
-        }
-        
-        .legend-items {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        
+  
         @media (max-width: 768px) {
-            .schedules-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .header h1 {
-                font-size: 2.2rem;
-            }
-            
-            .schedule-table th,
-            .schedule-table td {
-                padding: 10px 6px;
-                font-size: 0.9rem;
-            }
-            
-            .download-btn {
-                padding: 10px 20px;
-                font-size: 1rem;
-            }
-        }
-        
-        @media print {
-            body {
-                background: none;
-            }
-            .container {
-                box-shadow: none;
-            }
-            .download-btn, .header, .motivation, .legend {
-                display: none;
-            }
-            .student-card {
-                page-break-inside: avoid;
-            }
+            .students-grid { grid-template-columns: 1fr; gap: 20px; }
+            .header h1 { font-size: 2.2rem; }
+            .student-header { font-size: 1.3rem; padding: 15px; }
+            .schedule-row { padding: 12px; }
+            .subject-tag { font-size: 0.8rem; padding: 4px 8px; min-width: 50px; }
+            .download-btn { padding: 10px 20px; font-size: 1rem; }
         }
         
         @keyframes fadeIn {
@@ -307,10 +196,22 @@
             from { opacity: 0; transform: translateY(-30px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .main-header, .download-section { display: none; }
+            .students-grid { grid-template-columns: 1fr; gap: 30px; }
+            .student-card {
+                box-shadow: none;
+                border: 2px solid #e2e8f0;
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="main-header">
         <div class="header">
             <h1><i class="fas fa-star"></i> بارك الله فيكِ أمنا الغالية <i class="fas fa-star"></i></h1>
             <p>جزاكِ الله خيراً على اهتمامك ومتابعتك الرائعة لأولادك</p>
@@ -322,234 +223,116 @@
             <p>اجتهدوا في دروسكم واجعلوا ماما تفتخر بكم! 💪</p>
             <p>كل درس تحضروه وكل واجب تعملوه يفرح قلب أمكم الحبيبة 🥰</p>
         </div>
-        
-        <button class="download-btn" onclick="downloadPDF()"><i class="fas fa-download"></i> تحميل كـ PDF</button>
-        
-        <div class="legend">
-            <h3><i class="fas fa-palette"></i> دليل الألوان:</h3>
-            <div class="legend-items">
-                <span class="subject quran">قرآن كريم</span>
-                <span class="subject science">علوم</span>
-                <span class="subject arabic">لغة عربية</span>
-                <span class="subject math">رياضيات</span>
-                <span class="subject english">إنجليزي</span>
+    </div>
+    
+ 
+    
+    <div class="students-grid">
+        <!-- جدول دلال -->
+        <div class="student-card">
+            <div class="student-header dalal">
+                <i class="fas fa-user-graduate"></i> دلال
+            </div>
+            <div class="schedule-table">
+                <div class="table-header">
+                    <div class="table-header-row">
+                        <div>المواد</div><div>الوقت</div><div>اليوم</div>
+                    </div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag science">علوم</span><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">6:00 م</div><div class="day-cell">السبت</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag math">رياضيات</span><span class="subject-tag arabic">عربي</span></div>
+                    <div class="time-cell">6:00 م</div><div class="day-cell">الإثنين</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag english">إنجليزي</span><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">6:00 م</div><div class="day-cell">الثلاثاء</div>
+                </div>
             </div>
         </div>
         
-        <div class="schedules-grid">
-            <div class="student-card sara">
-                <div class="student-header">
-                    <i class="fas fa-user-graduate"></i> سارة
-                </div>
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>اليوم</th>
-                            <th>الوقت</th>
-                            <th>المواد</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="day-cell">السبت</td>
-                            <td class="time-cell">5:00 م</td>
-                            <td>
-                                <span class="subject quran">قرآن</span>
-                                <span class="subject arabic">عربي</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الإثنين</td>
-                            <td class="time-cell">5:00 م</td>
-                            <td>
-                                <span class="subject science">علوم</span>
-                                <span class="subject math">رياضيات</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الثلاثاء</td>
-                            <td class="time-cell">5:00 م</td>
-                            <td>
-                                <span class="subject english">إنجليزي</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <!-- جدول سارة -->
+        <div class="student-card">
+            <div class="student-header sara">
+                <i class="fas fa-user-graduate"></i> سارة
             </div>
-            
-            <div class="student-card dalal">
-                <div class="student-header">
-                    <i class="fas fa-user-graduate"></i> دلال
+            <div class="schedule-table">
+                <div class="table-header">
+                    <div class="table-header-row">
+                        <div>المواد</div><div>الوقت</div><div>اليوم</div>
+                    </div>
                 </div>
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>اليوم</th>
-                            <th>الوقت</th>
-                            <th>المواد</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="day-cell">السبت</td>
-                            <td class="time-cell">6:00 م</td>
-                            <td>
-                                <span class="subject quran">قرآن</span>
-                                <span class="subject science">علوم</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الإثنين</td>
-                            <td class="time-cell">6:00 م</td>
-                            <td>
-                                <span class="subject arabic">عربي</span>
-                                <span class="subject math">رياضيات</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الثلاثاء</td>
-                            <td class="time-cell">6:00 م</td>
-                            <td>
-                                <span class="subject english">إنجليزي</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag science">علوم</span><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">5:00 م</div><div class="day-cell">السبت</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag math">رياضيات</span><span class="subject-tag arabic">عربي</span></div>
+                    <div class="time-cell">5:00 م</div><div class="day-cell">الإثنين</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag english">إنجليزي</span><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">5:00 م</div><div class="day-cell">الثلاثاء</div>
+                </div>
             </div>
-            
-            <div class="student-card saleh">
-                <div class="student-header">
-                    <i class="fas fa-user-graduate"></i> صالح
-                </div>
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>اليوم</th>
-                            <th>الوقت</th>
-                            <th>المواد</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="day-cell">السبت</td>
-                            <td class="time-cell">8:00 م</td>
-                            <td>
-                                <span class="subject quran">قرآن</span>
-                                <span class="subject math">رياضيات</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الإثنين</td>
-                            <td class="time-cell">8:00 م</td>
-                            <td>
-                                <span class="subject science">علوم</span>
-                                <span class="subject arabic">عربي</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الأربعاء</td>
-                            <td class="time-cell">8:00 م</td>
-                            <td>
-                                <span class="subject english">إنجليزي</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        </div>
+        
+        <!-- جدول عبدالله -->
+        <div class="student-card">
+            <div class="student-header abdullah">
+                <i class="fas fa-user-graduate"></i> عبدالله
             </div>
-            
-            <div class="student-card abdullah">
-                <div class="student-header">
-                    <i class="fas fa-user-graduate"></i> عبدالله
+            <div class="schedule-table">
+                <div class="table-header">
+                    <div class="table-header-row">
+                        <div>المواد</div><div>الوقت</div><div>اليوم</div>
+                    </div>
                 </div>
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>اليوم</th>
-                            <th>الوقت</th>
-                            <th>المواد</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="day-cell">السبت</td>
-                            <td class="time-cell">7:00 م</td>
-                            <td>
-                                <span class="subject quran">قرآن</span>
-                                <span class="subject english">إنجليزي</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الإثنين</td>
-                            <td class="time-cell">7:00 م</td>
-                            <td>
-                                <span class="subject quran">قرآن</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="day-cell">الأربعاء</td>
-                            <td class="time-cell">7:00 م</td>
-                            <td>
-                                <span class="subject english">إنجليزي</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag english">إنجليزي</span><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">7:00 م</div><div class="day-cell">السبت</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">7:00 م</div><div class="day-cell">الإثنين</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag english">إنجليزي</span></div>
+                    <div class="time-cell">7:00 م</div><div class="day-cell">الأربعاء</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- جدول صالح -->
+        <div class="student-card">
+            <div class="student-header saleh">
+                <i class="fas fa-user-graduate"></i> صالح
+            </div>
+            <div class="schedule-table">
+                <div class="table-header">
+                    <div class="table-header-row">
+                        <div>المواد</div><div>الوقت</div><div>اليوم</div>
+                    </div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag math">رياضيات</span><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">8:00 م</div><div class="day-cell">السبت</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag science">علوم</span><span class="subject-tag arabic">عربي</span></div>
+                    <div class="time-cell">8:00 م</div><div class="day-cell">الإثنين</div>
+                </div>
+                <div class="schedule-row">
+                    <div class="subjects-cell"><span class="subject-tag english">إنجليزي</span><span class="subject-tag quran">قرآن</span></div>
+                    <div class="time-cell">8:00 م</div><div class="day-cell">الأربعاء</div>
+                </div>
             </div>
         </div>
     </div>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.student-card');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = `${index * 0.3}s`;
-                card.style.animation = 'fadeIn 0.8s ease-out forwards';
-                card.addEventListener('click', function() {
-                    this.style.transform = 'scale(1.03)';
-                    setTimeout(() => {
-                        this.style.transform = '';
-                    }, 200);
-                });
-            });
-        });
-        
-        function downloadPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: 'a4'
-            });
-            
-            doc.addFileToVFS('Amiri-Regular.ttf', amiriFont);
-            doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-            doc.setFont('Amiri');
-            
-            doc.setFontSize(20);
-            doc.text('جدول مواعيد الطلاب', 105, 20, { align: 'center' });
-            
-            let y = 30;
-            document.querySelectorAll('.student-card').forEach(card => {
-                const name = card.querySelector('.student-header').textContent.trim();
-                doc.setFontSize(16);
-                doc.text(name, 105, y, { align: 'center' });
-                y += 10;
-                
-                const table = card.querySelector('.schedule-table');
-                table.querySelectorAll('tbody tr').forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    const day = cells[0].textContent;
-                    const time = cells[1].textContent;
-                    const subjects = cells[2].textContent;
-                    doc.setFontSize(12);
-                    doc.text(`${day} | ${time} | ${subjects}`, 10, y);
-                    y += 8;
-                });
-                y += 5;
-            });
-            
-            doc.save('جدول_مواعيد_الطلاب.pdf');
-        }
-    </script>
+  
 </body>
 </html>
